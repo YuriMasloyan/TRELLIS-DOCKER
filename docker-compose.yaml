@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  trellis2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trellis2-container
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "7860:7860" # Стандартный порт для Web UI (Gradio)
+      - "8000:8000" # Порт для API (FastAPI), если будете использовать как сервис
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Важно для 3D-операций и рендеринга (nvdiffrast, kaolin и т.д.):
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
+      # Указываем папку для кэша Hugging Face внутри контейнера:
+      - HF_HOME=/root/.cache/huggingface
+      # - HF_TOKEN=ваш_токен # Раскомментируйте и впишите, если качаете закрытые зависимости
+    volumes:
+      - .:/workspace # Монтируем текущий код в контейнер, чтобы можно было править "на лету"
+      - hf_cache:/root/.cache/huggingface # Сохраняем веса модели на хосте
+    working_dir: /workspace
+    # Команда запуска. Если в репозитории главный файл называется иначе, поменяйте app.py:
+    # command: python app.py
+    stdin_open: true # Позволяет держать контейнер открытым (интерактивный режим)
+    tty: true        # Аналог флага -t в docker run
+
+volumes:
+  hf_cache:
+    name: trellis2_model_cache
